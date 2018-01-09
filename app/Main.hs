@@ -1,11 +1,12 @@
 module Main where
 
--- import Lib
 import Text.Printf (printf)
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer.Lazy
+
+-- Recreation of https://gist.github.com/Decoherence/39a4c34685d86a334b63 with transformer library.
 
 data Person = Person { name :: String } deriving Show
 
