@@ -5,6 +5,8 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer.Lazy
+import qualified Data.Map.Lazy as Map
+import Data.List (intercalate)
 
 -- Recreation of https://gist.github.com/Decoherence/39a4c34685d86a334b63 with transformer library.
 
@@ -36,6 +38,17 @@ process = do
   _ <- lift . tell $ printf "Found person: %s. " p
   (liftIO . putStrLn) p
 
+type Config = Map.Map String String
+
+peopleConfig :: Config
+peopleConfig = Map.fromList [("Alex", "Fontaine"), ("Philip", "Carpenter"), ("Kim", "Lynch")]
+
+processNames :: ReaderT Config (WriterT String IO) ()
+processNames = do
+  _ <- (lift . tell) "Received the following names from config: "
+  allNames <- ask
+  let names = intercalate "," $ fmap (\el -> printf "%s %s" (fst el) (snd el)) (Map.toList allNames)
+  (lift . tell) (show names)
 
 main :: IO ()
 main = do
@@ -43,7 +56,7 @@ main = do
   result1 <- runWriterT (runReaderT process alex) -- :: ((), String)
   _ <- (putStrLn . snd) result1
 
-  -- Extract the name from monad transfomer, then print it
+  -- Extract the name from monad transformer, then print it
   result2 <- runWriterT (runReaderT process' alex) -- :: (String, String)
   _ <- (putStrLn . fst) result2
   _ <- (putStrLn . snd) result2
@@ -57,4 +70,8 @@ main = do
   _ <- putStrLn "\n\nReaderT values:\n"
   _ <- mapM_ putStrLn people
   _ <- putStrLn "\nWriterT log:\n"
-  putStrLn log
+  _ <- putStrLn log
+
+  -- Print only the supplied names
+  config <- runWriterT (runReaderT processNames peopleConfig) -- :: ((), [String])
+  putStrLn $ printf "%s" (snd config)
