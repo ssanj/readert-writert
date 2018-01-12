@@ -7,8 +7,9 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer.Lazy
 import qualified Data.Map.Lazy as Map
 import Data.List (intercalate)
-import Data.Functor.Identity (runIdentity)
+import Data.Functor.Identity (Identity, runIdentity)
 import Text.Read (readMaybe)
+import Prelude hiding (log)
 
 type Config = Map.Map String String
 
@@ -25,16 +26,22 @@ getPort = do
   config <- ask
   return (Map.lookup "port" config >>= readMaybe)
 
+fromReader :: Monad m => ReaderT r Identity a -> ReaderT r m a
+fromReader = mapReaderT (return . runIdentity)
+
+log :: (Monad m, MonadTrans t, Monoid w) => w -> t (WriterT w m) ()
+log = lift . tell
+
 getConfig :: ReaderT Config (WriterT String IO) ()
 getConfig = do
-  hostM <- mapReaderT return getHost
-  portM <- mapReaderT return getPort
-  let host = maybe "-" id (runIdentity hostM)
-      port = maybe "-" show (runIdentity portM)
-  _ <- (lift . tell) $ "\nConfig"
-  _ <- (lift . tell) $ "\n======"
-  _ <- (lift . tell) $ printf "\nhost: %s" host
-  _ <- (lift . tell) $ printf "\nport: %s" port
+  hostM <- fromReader getHost
+  portM <- fromReader getPort
+  let host = maybe "-" id hostM
+      port = maybe "-" show portM
+  _ <- log "\nConfig"
+  _ <- log "\n======"
+  _ <- log (printf "\nhost: %s" host)
+  _ <- log (printf "\nport: %s" port)
   return ()
 
 readWriteConfig :: IO ()
