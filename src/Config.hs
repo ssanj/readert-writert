@@ -7,21 +7,35 @@ import Control.Monad.Trans.Reader
 import Control.Monad.Trans.Writer.Lazy
 import qualified Data.Map.Lazy as Map
 import Data.List (intercalate)
+import Data.Functor.Identity (runIdentity)
+import Text.Read (readMaybe)
 
 type Config = Map.Map String String
 
-peopleConfig :: Config
-peopleConfig = Map.fromList [("Alex", "Fontaine"), ("Philip", "Carpenter"), ("Kim", "Lynch")]
+serverConfig :: Config
+serverConfig = Map.fromList [("host", "localhost"), ("port", "7654")]
 
-processNames :: ReaderT Config (WriterT String IO) ()
-processNames = do
-  _ <- (lift . tell) "Received the following names from config: "
-  allNames <- ask
-  let names = intercalate "," $ fmap (\el -> printf "%s %s" (fst el) (snd el)) (Map.toList allNames)
-  (lift . tell) (show names)
+getHost :: Reader Config (Maybe String)
+getHost = do
+  config <- ask
+  return (Map.lookup "host" config)
 
+getPort :: Reader Config (Maybe Int)
+getPort = do
+  config <- ask
+  return (Map.lookup "port" config >>= readMaybe)
+
+getConfig :: ReaderT Config (WriterT String IO) ()
+getConfig = do
+  hostM <- mapReaderT return getHost
+  portM <- mapReaderT return getPort
+  let host = maybe "-" id (runIdentity hostM)
+      port = maybe "-" show (runIdentity portM)
+  _ <- (lift . tell) $ "\nConfig"
+  _ <- (lift . tell) $ "\n======"
+  _ <- (lift . tell) $ printf "\nhost: %s" host
+  _ <- (lift . tell) $ printf "\nport: %s" port
+  return ()
 
 readWriteConfig :: IO ()
-readWriteConfig = do
-  config <- runWriterT (runReaderT processNames peopleConfig) -- :: ((), [String])
-  putStrLn $ printf "%s" (snd config)
+readWriteConfig = execWriterT (runReaderT getConfig serverConfig) >>= putStrLn
