@@ -26,8 +26,8 @@ getPort = do
   config <- ask
   return (Map.lookup "port" config >>= readMaybe)
 
-fromReader :: Monad m => ReaderT r Identity a -> ReaderT r m a
-fromReader = mapReaderT (return . runIdentity)
+fromReader :: Monad m => Reader r a -> ReaderT r m a
+fromReader = reader . runReader
 
 log :: (Monad m, MonadTrans t, Monoid w) => w -> t (WriterT w m) ()
 log = lift . tell
