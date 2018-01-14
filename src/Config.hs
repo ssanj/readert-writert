@@ -21,8 +21,18 @@ getHost = do
   config <- ask
   return (Map.lookup "host" config)
 
+getHost2 :: Monad m => ReaderT Config m (Maybe String)
+getHost2 = do
+  config <- ask
+  return (Map.lookup "host" config)
+
 getPort :: Reader Config (Maybe Int)
 getPort = do
+  config <- ask
+  return (Map.lookup "port" config >>= readMaybe)
+
+getPort2 :: Monad m => ReaderT Config m (Maybe Int)
+getPort2 = do
   config <- ask
   return (Map.lookup "port" config >>= readMaybe)
 
@@ -44,5 +54,21 @@ getConfig = do
   _ <- log (printf "\nport: %s" port)
   return ()
 
+getConfig2 :: ReaderT Config (WriterT String IO) ()
+getConfig2 = do
+  hostM <- getHost2
+  portM <- getPort2
+  let host = maybe "-" id hostM
+      port = maybe "-" show portM
+  _ <- log "\nConfig"
+  _ <- log "\n======"
+  _ <- log (printf "\nhost: %s" host)
+  _ <- log (printf "\nport: %s" port)
+  return ()
+
+
 readWriteConfig :: IO ()
 readWriteConfig = execWriterT (runReaderT getConfig serverConfig) >>= putStrLn
+
+readWriteConfig2 :: IO ()
+readWriteConfig2 = execWriterT (runReaderT getConfig2 serverConfig) >>= putStrLn
